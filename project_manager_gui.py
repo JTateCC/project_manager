@@ -46,11 +46,13 @@ class ProjectForm:
 
 
     def add_to_db(self):
-        self.p = Project(title=self.title_var,
-                         description=self.description_var,
-                         status=self.status_var,
-                         priority=self.priority_var,
-                         deadline=self.deadline)
+
+        self.date_integer = date_to_int_conversion(self.deadline.get_date())
+        self.p = Project(Title=self.title_var.get(),
+                         Description=self.description_var.get(),
+                         Status=self.status_var,
+                         Priority=self.priority_var,
+                         Deadline=self.date_integer)
         session.add(self.p)
         session.commit()
 
@@ -58,13 +60,21 @@ def add_project(master):
 
     pf = ProjectForm(master)
 
+def date_to_int_conversion(date):
+    return ((10000*date.year)+(100*date.day)+(date.month))
+
+def int_to_date_conversion(dateint)
+    # need to build
+
+
 def main():
 
     root = tk.Tk()
     Session = create_session()
+    global session
     session = Session()
 
-    add_project_btn = tk.Button(root, command=add_project(root))
+    add_project_btn = tk.Button(root, command=lambda: add_project(root))
     add_project_btn.pack()
 
     root.mainloop()
