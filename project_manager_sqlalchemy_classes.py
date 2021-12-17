@@ -11,7 +11,8 @@ Base = declarative_base()
 
 class Project(Base):
     __tablename__ = "Projects"
-    ProjectID = Column(Integer, primary_key=True)
+    __table_args__ = {'sqlite_autoincrement': True}
+    id = Column(Integer, primary_key=True,  unique=True)
     Title = Column(String)
     Description = Column(String)
     Status = Column(Integer)
@@ -22,10 +23,11 @@ class Project(Base):
 
 class Task(Base):
     __tablename__ = "Tasks"
-    TaskID = Column(Integer, primary_key=True)
+    __table_args__ = {'sqlite_autoincrement': True}
+    id = Column(Integer, primary_key=True, unique=True)
     Description = Column(String)
     Deadline = Column(Integer)
     CompletionDate = Column(Integer)
     Priority = Column(Integer)
-    ProjectID = Column(Integer, ForeignKey(Project.ProjectID))
+    projectid = Column(Integer, ForeignKey(Project.id))
 

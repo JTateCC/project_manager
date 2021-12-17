@@ -8,9 +8,6 @@ db_path = Path.joinpath(db_folder, 'project_manager.db')
 
 
 # Create Initial Database
-project_table = {'id', }
-
-
 
 def create_database():
     conn = sqlite3.connect(db_path)
@@ -18,7 +15,7 @@ def create_database():
 
 def create_tables():
     project_table_sql = ('''CREATE TABLE IF NOT EXISTS Projects
-                        (ProjectID INT PRIMARY KEY, 
+                        (id INT PRIMARY KEY, 
                         Title TEXT, 
                         Description TEXT,
                         Status INT, 
@@ -26,12 +23,12 @@ def create_tables():
                         Priority INT)''')
 
     task_table_sql = ('''CREATE TABLE IF NOT EXISTS Tasks
-                     (TaskID INT PRIMARY KEY,
+                     (id INT PRIMARY KEY,
                       Description TEXT,
                       Deadline INT,
                       CompletionDate INT,
                       Priority INT,
-                      ProjectID INT, 
+                      projectid INT, 
                       FOREIGN KEY(ProjectID) REFERENCES Projects(ProjectID))''')
 
     conn = sqlite3.connect(db_path)
@@ -41,5 +38,5 @@ def create_tables():
     conn.commit()
     conn.close()
 
-
-create_tables()
+#create_database()
+#create_tables()
