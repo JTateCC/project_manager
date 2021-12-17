@@ -4,7 +4,7 @@ import tkinter as tk
 from tkcalendar import DateEntry
 from sqlalchemy.orm import sessionmaker
 
-=
+
 from project_manager_db_functions import create_db_engine, date_to_int_conversion
 from project_manager_sqlalchemy_classes import Project, Task
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     engine = create_db_engine()
     Session = sessionmaker(bind=engine)
     session = Session()
-
+    main()
 
 
 
