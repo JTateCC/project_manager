@@ -35,5 +35,6 @@ def delete_all_projects():
     conn.commit()
     conn.close()
 
-#view_all_projects()
+view_all_projects()
 #delete_all_projects()
+#view_tables()

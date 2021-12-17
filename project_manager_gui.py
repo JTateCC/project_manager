@@ -2,7 +2,9 @@ import math
 
 import tkinter as tk
 from tkcalendar import DateEntry
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
+
 
 
 from project_manager_db_functions import create_db_engine, date_to_int_conversion
@@ -29,11 +31,10 @@ class FrontPage:
         pf = ProjectForm(self.master)
 
     def get_active_projects(self):
-
-
-        results = session.query(Project).all()
+        statement = select(Project)
+        results = session.execute(statement).scalars().all()
+        print(results)
         for i, r in enumerate(results):
-            print(r)
             if r:
                 self.project_frames[i] = ProjectFrame(self.master, r)
 
@@ -59,7 +60,7 @@ class ProjectFrame(tk.Frame):
     def __init__(self, master, project):
         super().__init__(master)
         self.project = project
-        self.title = tk.Label(self, self.project.Title)
+        self.title = tk.Label(self, text=self.project.Title)
         self.title.grid(row=0, column=0)
 
 
@@ -100,17 +101,22 @@ class ProjectForm:
     def add_to_db(self):
 
         self.date_integer = date_to_int_conversion(self.deadline.get_date())
-        self.p = Project(Title=self.title_var.get(),
+        self.p = Project(id=None,
+                         Title=self.title_var.get(),
                          Description=self.description_var.get(),
                          Status=self.status_var,
                          Priority=self.priority_var,
                          Deadline=self.date_integer)
 
         session.add(self.p)
+        session.flush()
+        print(self.p.id)
         session.commit()
 
         self.entry_window.destroy()
+        front_page.add_project_btn.destroy()
         front_page.update_page()
+
 
 
 def main():
@@ -124,8 +130,9 @@ def main():
 
 if __name__ == "__main__":
     engine = create_db_engine()
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    Session = sessionmaker()
+    Session.configure(bind=engine)
+    session = Session(future=True)
     main()
 
 

@@ -15,15 +15,15 @@ def create_database():
 
 def create_tables():
     project_table_sql = ('''CREATE TABLE IF NOT EXISTS Projects
-                        (id INT PRIMARY KEY, 
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL , 
                         Title TEXT, 
                         Description TEXT,
-                        Status INT, 
-                        Deadline INT, 
-                        Priority INT)''')
+                        Status INTEGER, 
+                        Deadline INTEGER, 
+                        Priority INTERGER)''')
 
     task_table_sql = ('''CREATE TABLE IF NOT EXISTS Tasks
-                     (id INT PRIMARY KEY,
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                       Description TEXT,
                       Deadline INT,
                       CompletionDate INT,
@@ -38,5 +38,5 @@ def create_tables():
     conn.commit()
     conn.close()
 
-#create_database()
-#create_tables()
+create_database()
+create_tables()
