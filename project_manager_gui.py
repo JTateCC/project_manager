@@ -5,8 +5,6 @@ from tkcalendar import DateEntry
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-
-
 from project_manager_db_functions import create_db_engine, date_to_int_conversion
 from project_manager_sqlalchemy_classes import Project, Task
 
@@ -19,7 +17,8 @@ class FrontPage:
     def __init__(self, master):
         self.master = master
         self.project_frames = {}  # initialise a container for all active projects
-        self.update_page()
+        self.screen_width = None
+        self.screen_height = None
 
 
     def add_controls(self):
@@ -41,12 +40,18 @@ class FrontPage:
     def layout_projects(self):
         for j, v in enumerate(self.project_frames.values()):
             # these lines look to set the layout of the projects in the window, needs more customising
-            grid_row = math.floor(j/5)
+            grid_row = math.floor(j/4)
             grid_column = j % 4
-            v.grid(row=grid_row, column=grid_column)  # project frames are placed.
+            v.grid(row=grid_row, column=grid_column, sticky='nsew')  # project frames are placed.
 
             self.add_project_btn = tk.Button(self.master, text='Add Project', command=lambda: self.add_project())
-            self.add_project_btn.grid(row=math.ceil(len(self.project_frames) / 4), column=0)
+            self.add_project_btn.grid(row=3, column=0)
+        for k in range(3):
+            self.master.grid_rowconfigure(k, minsize=self.screen_height / 3, weight=1)
+        for m in range(4):
+            self.master.grid_columnconfigure(m, minsize=self.screen_width / 4, weight=1)
+
+
 
     def update_page(self):
         self.get_active_projects()
@@ -63,12 +68,19 @@ class ProjectFrame(tk.Frame):
         self.title = tk.Label(self, text=self.project.Title)
         self.title.grid(row=0, column=0)
 
+        self['highlightthickness'] = 1
+        self['highlightbackground'] = 'black'
+
+    def populate_tasks(self):
+        # needs working
 
 class ProjectForm:
 
     def __init__(self, master):
         self.entry_window = tk.Toplevel(master)
         self.p = None
+        self.frame_width = None
+        self.frame_height = None
 
         self.title_label = tk.Label(self.entry_window, text='Title')
         self.title_var = tk.StringVar()
@@ -97,7 +109,6 @@ class ProjectForm:
         self.add_to_db_btn.grid(row=len(self.label_list)+1, column=0)
 
 
-
     def add_to_db(self):
 
         self.date_integer = date_to_int_conversion(self.deadline.get_date())
@@ -117,14 +128,21 @@ class ProjectForm:
         front_page.add_project_btn.destroy()
         front_page.update_page()
 
+    class TaskFrame:
+
+    # needs work
 
 
 def main():
 
     root = tk.Tk()
-
     global front_page
     front_page = FrontPage(root)
+    front_page.screen_width = root.winfo_screenwidth()
+    front_page.screen_height = root.winfo_screenheight()
+    front_page.update_page()
+    root.geometry(f'{front_page.screen_width}x{front_page.screen_height}')
+
     root.mainloop()
 
 
