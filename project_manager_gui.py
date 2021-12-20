@@ -42,6 +42,7 @@ class FrontPage:
             # these lines look to set the layout of the projects in the window, needs more customising
             grid_row = math.floor(j/4)
             grid_column = j % 4
+            v.update_frame()
             v.grid(row=grid_row, column=grid_column, sticky='nsew')  # project frames are placed.
 
             self.add_project_btn = tk.Button(self.master, text='Add Project', command=lambda: self.add_project())
@@ -59,6 +60,7 @@ class FrontPage:
         self.add_controls()
 
 
+
 # each project has its own frame where tasks and controls are held
 class ProjectFrame(tk.Frame):
 
@@ -71,16 +73,54 @@ class ProjectFrame(tk.Frame):
         self['highlightthickness'] = 1
         self['highlightbackground'] = 'black'
 
-    def populate_tasks(self):
-        # needs working
+        self.task_frames = []  # list to hold all tasks in the project
+        self.new_task_var = tk.StringVar()
+        self.new_task_entry = tk.Entry(self, textvariable=self.new_task_var)
+        self.new_task_entry.grid(row=1, column=0)
 
+        self.add_task_btn = tk.Button(self, text='Add Task', command=self.add_task)
+        self.add_task_btn.grid(row=1, column=1)
+        self.populate_tasks()
+
+    def add_task(self):
+        newTask = Task(Description=self.new_task_var.get(),
+                       Deadline=20221111,
+                       CompletionDate=20221212,
+                       Priority=1,
+                       projectid=self.project.id)
+
+        session.add(newTask)
+        session.flush()
+        session.commit()
+        self.new_task_var.set("")
+        self.populate_tasks()
+        self.layout_tasks()
+
+    def populate_tasks(self):
+        for r in self.project.Tasks:
+            self.task_frames.append(TaskFrame(self, r))
+
+    def layout_tasks(self):
+        for i, t in enumerate(self.task_frames, 2):
+            t.grid(row=i, column=0)
+
+    def update_frame(self):
+        for tf in self.task_frames:
+            print(tf)
+            tf.destroy()
+        self.populate_tasks()
+        self.layout_tasks()
+
+# class for new project entry
 class ProjectForm:
 
     def __init__(self, master):
         self.entry_window = tk.Toplevel(master)
+
         self.p = None
         self.frame_width = None
         self.frame_height = None
+        self.date_integer = None
 
         self.title_label = tk.Label(self.entry_window, text='Title')
         self.title_var = tk.StringVar()
@@ -99,11 +139,9 @@ class ProjectForm:
         self.label_list = [self.title_label, self.description_label,self.deadline_label]
         self.entry_list = [self.title_entry, self.description_entry, self.deadline]
 
-
         for i, v in enumerate(self.label_list):
             v.grid(row=i, column=0)
             self.entry_list[i].grid(row=i, column=1)
-
 
         self.add_to_db_btn = tk.Button(self.entry_window, text='Add Project', command=lambda: self.add_to_db())
         self.add_to_db_btn.grid(row=len(self.label_list)+1, column=0)
@@ -128,9 +166,14 @@ class ProjectForm:
         front_page.add_project_btn.destroy()
         front_page.update_page()
 
-    class TaskFrame:
 
-    # needs work
+# frame to hold task details and controls
+class TaskFrame(tk.Frame):
+
+    def __init__(self, master, task):
+        super().__init__(master)
+        self.task_description = tk.Label(self, text=task.Description)
+        self.task_description.pack()
 
 
 def main():
