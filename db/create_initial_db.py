@@ -19,6 +19,7 @@ def create_tables():
                         Title TEXT, 
                         Description TEXT,
                         Status INTEGER, 
+                        CompletionDate INTEGER,
                         Deadline INTEGER, 
                         Priority INTERGER)''')
 
@@ -26,8 +27,8 @@ def create_tables():
                      (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                       Description TEXT,
                       Deadline INT,
+                      Status INTEGER,
                       CompletionDate INT,
-                      Priority INT,
                       projectid INT, 
                       FOREIGN KEY(ProjectID) REFERENCES Projects(ProjectID))''')
 

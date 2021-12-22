@@ -16,6 +16,7 @@ class Project(Base):
     Title = Column(String)
     Description = Column(String)
     Status = Column(Integer)
+    CompletionDate = Column(Integer)
     Deadline = Column(Integer)
     Priority = Column(Integer)
     Tasks = relationship("Task", backref=backref("Projects"))
@@ -27,7 +28,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True, unique=True)
     Description = Column(String)
     Deadline = Column(Integer)
+    Status = Column(Integer)
     CompletionDate = Column(Integer)
-    Priority = Column(Integer)
     projectid = Column(Integer, ForeignKey(Project.id))
 

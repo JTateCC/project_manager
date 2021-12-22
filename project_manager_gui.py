@@ -1,11 +1,13 @@
 import math
+import datetime
 
 import tkinter as tk
+from tkinter import messagebox
 from tkcalendar import DateEntry
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import sessionmaker
 
-from project_manager_db_functions import create_db_engine, date_to_int_conversion
+from project_manager_db_functions import create_db_engine, date_to_int_conversion, int_to_date_conversion
 from project_manager_sqlalchemy_classes import Project, Task
 
 
@@ -16,14 +18,28 @@ class FrontPage:
 
     def __init__(self, master):
         self.master = master
+        self.master.title("Project Manager")
         self.project_frames = {}  # initialise a container for all active projects
-        self.screen_width = None
-        self.screen_height = None
+
+        # configs
+        self.screen_width = self.master.winfo_screenwidth()
+        self.screen_height = self.master.winfo_screenheight()
+        self.master.title("Project Manager")
+        self.master.geometry(f'{self.screen_width}x{self.screen_height}')
+        self.master.grid_propagate(0)
+
+        # set menu controls
+        self.add_controls()
+        self.master.config(menu=self.menubar)
+
+        self.update_page()
 
 
     def add_controls(self):
-        self.add_project_btn = tk.Button(self.master, text='Add Project', command=lambda: self.add_project())
-        self.add_project_btn.grid(row=math.ceil(len(self.project_frames) / 4), column=0)
+        self.menubar = tk.Menu(self.master)
+        self.filemenu = tk.Menu(self.menubar, tearoff=0)
+        self.filemenu.add_command(label='Add Project', command=self.add_project)
+        self.menubar.add_cascade(label='File', menu=self.filemenu)
 
 
     def add_project(self):
@@ -32,34 +48,33 @@ class FrontPage:
     def get_active_projects(self):
         statement = select(Project)
         results = session.execute(statement).scalars().all()
-        print(results)
+        self.project_frames = {}
         for i, r in enumerate(results):
             if r:
-                self.project_frames[i] = ProjectFrame(self.master, r)
+                if r.Status == 0:
+                    self.project_frames[i] = ProjectFrame(self.master, r)
 
     def layout_projects(self):
         for j, v in enumerate(self.project_frames.values()):
             # these lines look to set the layout of the projects in the window, needs more customising
             grid_row = math.floor(j/4)
             grid_column = j % 4
-            v.update_frame()
-            v.grid(row=grid_row, column=grid_column, sticky='nsew')  # project frames are placed.
+            v.grid(row=grid_row, column=grid_column, sticky='nsew', padx=10, pady=10)  # project frames are placed.
 
-            self.add_project_btn = tk.Button(self.master, text='Add Project', command=lambda: self.add_project())
-            self.add_project_btn.grid(row=3, column=0)
         for k in range(3):
-            self.master.grid_rowconfigure(k, minsize=self.screen_height / 3, weight=1)
+            self.master.grid_rowconfigure(k, minsize=self.screen_height / 3, weight=3)
         for m in range(4):
             self.master.grid_columnconfigure(m, minsize=self.screen_width / 4, weight=1)
-
 
 
     def update_page(self):
         self.get_active_projects()
         self.layout_projects()
-        self.add_controls()
 
-
+    def update_session(self):
+        session.commit()
+        session.flush()
+        self.update_page()
 
 # each project has its own frame where tasks and controls are held
 class ProjectFrame(tk.Frame):
@@ -67,49 +82,109 @@ class ProjectFrame(tk.Frame):
     def __init__(self, master, project):
         super().__init__(master)
         self.project = project
-        self.title = tk.Label(self, text=self.project.Title)
-        self.title.grid(row=0, column=0)
 
-        self['highlightthickness'] = 1
+        # configurations
+        self['highlightthickness'] = 5
         self['highlightbackground'] = 'black'
 
-        self.task_frames = []  # list to hold all tasks in the project
+        #  column weightings
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=4)
+        self.grid_columnconfigure(2, weight=4)
+        self.grid_columnconfigure(3, weight=2)
+        self.grid_columnconfigure(4, weight=2)
+
+        #  row weightings
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=2)
+        self.grid_rowconfigure(3, weight=2)
+        self.grid_rowconfigure(4, weight=2)
+
+
+        self.title = tk.Label(self, text=self.project.Title, font='Times 16')
+        self.title.grid(row=0, column=0, columnspan=3, rowspan=2, pady=5, sticky = 'ew')
+
+        self.deadline_label = tk.Label(self, text="Project Deadline")
+        self.deadline_label.grid(row=0, column=3, columnspan=2, sticky='s')
+        self.deadline_int = self.project.Deadline
+        self.deadline_date = int_to_date_conversion(self.deadline_int)
+        self.deadline = tk.Label(self, text=self.deadline_date.strftime("%x"))
+        self.deadline.grid(row=1, column=3, columnspan=2, sticky='n')
+
+        self.description = tk.Label(self, text=self.project.Description, font='Times 12')
+        self.description.grid(row=2, column=0, columnspan=3,pady=5)
+
+        # project control buttons
+        self.complete_project_btn = tk.Button(self, text='Complete Project',command=self.complete_project)
+        self.complete_project_btn.grid(row=3, column=1)
+
+        self.delete_project_btn = tk.Button(self, text='Delete Project', command=self.delete_project)
+        self.delete_project_btn.grid(row=3, column=2)
+
+        self.view_project_archive_btn = tk.Button(self, text='View Archive', command=self.view_project_archive)
+        self.view_project_archive_btn.grid(row=3, column=4)
+
+        # new task labels and controls
+        self.add_task_btn = tk.Button(self, text='Add Task', command=self.add_task)
+        self.add_task_btn.grid(row=4, column=4)
+
         self.new_task_var = tk.StringVar()
         self.new_task_entry = tk.Entry(self, textvariable=self.new_task_var)
-        self.new_task_entry.grid(row=1, column=0)
+        self.new_task_entry.grid(row=4, column=0, columnspan=3, sticky='ew', padx=5, pady=5)
 
-        self.add_task_btn = tk.Button(self, text='Add Task', command=self.add_task)
-        self.add_task_btn.grid(row=1, column=1)
+        self.task_frames = []  # list to hold all tasks in the project
+        self.task_labels = []  # holds numerical labels in memory
         self.populate_tasks()
+        self.layout_tasks()
 
     def add_task(self):
         newTask = Task(Description=self.new_task_var.get(),
                        Deadline=20221111,
                        CompletionDate=20221212,
-                       Priority=1,
+                       Status=0,
                        projectid=self.project.id)
 
         session.add(newTask)
-        session.flush()
-        session.commit()
+
         self.new_task_var.set("")
-        self.populate_tasks()
-        self.layout_tasks()
+        front_page.update_session()
 
     def populate_tasks(self):
+        self.task_frames = []
         for r in self.project.Tasks:
-            self.task_frames.append(TaskFrame(self, r))
+            if r.Status == 0:
+                self.task_frames.append(TaskFrame(self, r))
 
     def layout_tasks(self):
-        for i, t in enumerate(self.task_frames, 2):
-            t.grid(row=i, column=0)
+        self.task_labels = []
+        for i, t in enumerate(self.task_frames, 5):
+            task_label = tk.Label(self,text=i-4)
+            self.task_labels.append(task_label)
+            task_label.grid(row=i, column=0)
+            t.grid(row=i, column=1, columnspan=2, sticky='ew',padx=5, pady=5)
+            self.grid_rowconfigure(i, weight=2)
 
-    def update_frame(self):
-        for tf in self.task_frames:
-            print(tf)
-            tf.destroy()
-        self.populate_tasks()
-        self.layout_tasks()
+    def complete_project(self):
+        res = messagebox.askyesno('Warning', 'Complete Project & Archive?')
+        if res == True:
+            self.project.Status = 1
+            self.project.CompletionDate = date_to_int_conversion(datetime.date.today())
+            session.add(self.project)
+            self.destroy()
+        front_page.update_session()
+
+    def delete_project(self):
+        res = messagebox.askyesno('Warning', 'Delete Project?')
+        if res == True:
+            statement = delete(Project).where(Project.id == self.project.id)
+            session.execute(statement)
+            self.destroy()
+        front_page.update_session()
+
+    def view_project_archive(self):
+        newArchiveWindow = Archive(self.master, self.project)
+
 
 # class for new project entry
 class ProjectForm:
@@ -130,7 +205,7 @@ class ProjectForm:
         self.description_var = tk.StringVar()
         self.description_entry = tk.Entry(self.entry_window, textvariable=self.description_var)
 
-        self.status_var = 1
+        self.status_var = 0
         self.priority_var = 1
 
         self.deadline_label = tk.Label(self.entry_window, text='Deadline')
@@ -154,17 +229,13 @@ class ProjectForm:
                          Title=self.title_var.get(),
                          Description=self.description_var.get(),
                          Status=self.status_var,
+                         CompletionDate=0,
                          Priority=self.priority_var,
                          Deadline=self.date_integer)
 
         session.add(self.p)
-        session.flush()
-        print(self.p.id)
-        session.commit()
-
         self.entry_window.destroy()
-        front_page.add_project_btn.destroy()
-        front_page.update_page()
+        front_page.update_session()
 
 
 # frame to hold task details and controls
@@ -172,8 +243,75 @@ class TaskFrame(tk.Frame):
 
     def __init__(self, master, task):
         super().__init__(master)
-        self.task_description = tk.Label(self, text=task.Description)
-        self.task_description.pack()
+        self.task = task
+
+        #configuration
+        self.grid_columnconfigure(0, weight=5)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+        self['highlightthickness'] = 2
+        self['highlightbackground'] = 'black'
+
+        self.task_description = tk.Label(self, text=self.task.Description)
+        self.task_description.grid(row=0, column=0, sticky='ew')
+
+
+        self.complete_task_btn = tk.Button(self, text=u'\u2713', command = self.complete_task)
+        self.complete_task_btn.grid(row=0, column=1, sticky='e')
+
+        self.delete_task_btn = tk.Button(self, text="X", command = self.delete_task)
+        self.delete_task_btn.grid(row=0, column=2,sticky='e')
+
+    def delete_task(self):
+        statement = delete(Task).where(Task.id == self.task.id)
+        print(self.task.id)
+        session.execute(statement)
+        front_page.update_session()
+
+    def complete_task(self):
+        self.task.Status = 1
+        self.task.CompletionDate = date_to_int_conversion(datetime.date.today())
+        session.add(self.task)
+        front_page.update_session()
+
+class Archive(tk.Toplevel):
+
+    def __init__(self, master, project):
+        super().__init__(master)
+        self.project = project
+
+        self.title_label = tk.Label(self, text=self.project.Title)
+        self.title_label.grid(row=0, column=0, pady=5, padx=5)
+
+        for i, r in enumerate(self.project.Tasks,1):
+            descrip_text = r.Description
+            deadline_text = r.Deadline
+            completion_text = ""
+            if r.Status == 1:
+                descrip_text = self.strike(descrip_text)
+                completion_text = r.CompletionDate
+
+            self.descrip_label = tk.Label(self, text=descrip_text)
+            self.descrip_label.grid(row=i, column=0, padx=5, pady=5)
+
+            self.deadline_label = tk.Label(self, text=deadline_text)
+            self.deadline_label.grid(row=i, column=1, padx=5, pady=5)
+
+            self.completion_label = tk.Label(self, text=completion_text)
+            self.completion_label.grid(row=i, column=2, padx=5, pady=5)
+
+        self.exit_archive_btn = tk.Button(self, text='Exit', command=self.exit_archive)
+        self.exit_archive_btn.grid(row=0, column=1)
+
+    def exit_archive(self):
+        self.destroy()
+
+
+    def strike(self, text):
+        result = ''
+        for c in text:
+            result = result + c + '\u0336'
+        return result
 
 
 def main():
@@ -181,11 +319,6 @@ def main():
     root = tk.Tk()
     global front_page
     front_page = FrontPage(root)
-    front_page.screen_width = root.winfo_screenwidth()
-    front_page.screen_height = root.winfo_screenheight()
-    front_page.update_page()
-    root.geometry(f'{front_page.screen_width}x{front_page.screen_height}')
-
     root.mainloop()
 
 
