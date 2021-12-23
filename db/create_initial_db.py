@@ -30,7 +30,7 @@ def create_tables():
                       Status INTEGER,
                       CompletionDate INT,
                       projectid INT, 
-                      FOREIGN KEY(ProjectID) REFERENCES Projects(ProjectID))''')
+                      FOREIGN KEY(ProjectID) REFERENCES Projects(ProjectID) ON DELETE CASCADE)''')
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

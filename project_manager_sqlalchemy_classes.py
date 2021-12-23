@@ -30,5 +30,5 @@ class Task(Base):
     Deadline = Column(Integer)
     Status = Column(Integer)
     CompletionDate = Column(Integer)
-    projectid = Column(Integer, ForeignKey(Project.id))
+    projectid = Column(Integer, ForeignKey(Project.id, ondelete="CASCADE"))
 
