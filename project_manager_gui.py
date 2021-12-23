@@ -37,11 +37,16 @@ class FrontPage:
         self.menubar = tk.Menu(self.master)
         self.filemenu = tk.Menu(self.menubar, tearoff=0)
         self.filemenu.add_command(label='Add Project', command=self.add_project)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label='View Project History', command=self.view_project_history)
         self.menubar.add_cascade(label='File', menu=self.filemenu)
 
 
     def add_project(self):
         pf = ProjectForm(self.master)
+
+    def view_project_history(self):
+        ph = ProjectHistory(self.master)
 
     def get_active_projects(self):
         statement = select(Project)
@@ -50,17 +55,18 @@ class FrontPage:
         for i, r in enumerate(results):
             if r:
                 if r.Status == 0:
-                    self.project_frames[i] = ProjectFrame(self.master, r)
+                    newpf = ProjectFrame(self.master, r)
+                    self.project_frames[i] = newpf
 
     def layout_projects(self):
         for j, v in enumerate(self.project_frames.values()):
             # these lines look to set the layout of the projects in the window, needs more customising
             grid_row = math.floor(j/4)
-            grid_column = j % 4
+            grid_column = j % 3
             v.grid(row=grid_row, column=grid_column, sticky='nsew', padx=10, pady=10)  # project frames are placed.
 
-        for k in range(3):
-            self.master.grid_rowconfigure(k, minsize=self.screen_height / 3, weight=3)
+        for k in range(2):
+            self.master.grid_rowconfigure(k, minsize=self.screen_height / 2, weight=1)
         for m in range(4):
             self.master.grid_columnconfigure(m, minsize=self.screen_width / 4, weight=1)
 
@@ -81,57 +87,68 @@ class ProjectFrame(tk.Frame):
         super().__init__(master)
         self.project = project
 
+        # frames setup for controls and tasks
+        self.control_frame = tk.Frame(self)
+        self.control_frame.grid(row=0, column=0, padx=5, pady=5, sticky='news')
+
+
+        self.task_holder_frame = tk.Frame(self)
+        self.task_holder_frame.grid(row=1, column=0, pady=5, padx=5, sticky='news')
+
 
         # configurations
         self['highlightthickness'] = 5
         self['highlightbackground'] = 'black'
+        self.grid_rowconfigure(0, weight=1, uniform='x')
+        self.grid_rowconfigure(1, weight=3, uniform='x')
 
-        #  column weightings
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=4)
-        self.grid_columnconfigure(2, weight=4)
-        self.grid_columnconfigure(3, weight=2)
-        self.grid_columnconfigure(4, weight=2)
+
+        #  column weightings for the control frame
+        self.control_frame.grid_columnconfigure(0, weight=1)
+        self.control_frame.grid_columnconfigure(1, weight=4)
+        self.control_frame.grid_columnconfigure(2, weight=4)
+        self.control_frame.grid_columnconfigure(3, weight=2)
+        self.control_frame.grid_columnconfigure(4, weight=2)
 
         #  row weightings
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_rowconfigure(2, weight=2)
-        self.grid_rowconfigure(3, weight=2)
-        self.grid_rowconfigure(4, weight=2)
+        self.control_frame.grid_rowconfigure(0, weight=1)
+        self.control_frame.grid_rowconfigure(1, weight=1)
+        self.control_frame.grid_rowconfigure(2, weight=2)
+        self.control_frame.grid_rowconfigure(3, weight=2)
+        self.control_frame.grid_rowconfigure(4, weight=2)
 
+        # control frame populated
+        self.title = tk.Label(self.control_frame, text=self.project.Title, font=front_page.styling.projectfont)
+        self.title.grid(row=0, column=0, columnspan=3, rowspan=2, pady=5, sticky='ew')
 
-        self.title = tk.Label(self, text=self.project.Title, font=front_page.styling.projectfont)
-        self.title.grid(row=0, column=0, columnspan=3, rowspan=2, pady=5, sticky = 'ew')
-
-        self.deadline_label = tk.Label(self,
+        self.deadline_label = tk.Label(self.control_frame,
                                        text="Project Deadline",
                                        font=front_page.styling.datefont)
         self.deadline_label.grid(row=0, column=3, columnspan=2, sticky='s')
         self.deadline_int = self.project.Deadline
         self.deadline_date = int_to_date_conversion(self.deadline_int)
-        self.deadline = tk.Label(self,
+        self.deadline = tk.Label(self.control_frame,
                                  text=self.deadline_date.strftime("%x"),
                                  font=front_page.styling.datefont)
         self.deadline.grid(row=1, column=3, columnspan=2, sticky='n')
 
-        self.description = tk.Label(self,
+        self.description = tk.Label(self.control_frame,
                                     text=self.project.Description,
                                     font=front_page.styling.projdescriptionfont)
         self.description.grid(row=2, column=0, columnspan=3, pady=5)
 
         # project control buttons
-        self.complete_project_btn = tk.Button(self, text='Complete Project',
+        self.complete_project_btn = tk.Button(self.control_frame, text='Complete Project',
                                               command=self.complete_project,
                                               font=front_page.styling.buttonfont)
         self.complete_project_btn.grid(row=3, column=1)
 
-        self.delete_project_btn = tk.Button(self, text='Delete Project',
+        self.delete_project_btn = tk.Button(self.control_frame, text='Delete Project',
                                             command=self.delete_project,
                                             font=front_page.styling.buttonfont)
         self.delete_project_btn.grid(row=3, column=2)
 
-        self.view_project_archive_btn = tk.Button(self, text='View Archive',
+        self.view_project_archive_btn = tk.Button(self.control_frame, text='View Archive',
                                                   command=self.view_project_archive,
                                                   font=front_page.styling.buttonfont)
         self.view_project_archive_btn.grid(row=3, column=4)
@@ -139,20 +156,24 @@ class ProjectFrame(tk.Frame):
         # new task labels and controls
 
         self.new_task_var = tk.StringVar()
-        self.new_task_entry = tk.Entry(self, textvariable=self.new_task_var)
-        self.new_task_entry.grid(row=4, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+        self.new_task_entry = tk.Entry(self.control_frame, textvariable=self.new_task_var)
+        self.new_task_entry.grid(row=4, column=0, columnspan=2, sticky='sew', padx=5, pady=5)
 
-        self.new_task_date = self.deadline = DateEntry(self)
+        self.new_task_date = self.deadline = DateEntry(self.control_frame)
         self.new_task_date.grid(row=4, column=2)
 
 
-        self.add_task_btn = tk.Button(self,
+        self.add_task_btn = tk.Button(self.control_frame,
                                       text='Add Task',
                                       command=self.add_task,
                                       font=front_page.styling.buttonfont)
         self.add_task_btn.grid(row=4, column=4)
 
 
+        # scrollbar
+
+        self.task_scrollbar = tk.Scrollbar(self.task_holder_frame, orient='vertical')
+        self.task_scrollbar.grid(row=0, column=3)
 
         self.task_frames = []  # list to hold all tasks in the project
         self.task_labels = []  # holds numerical labels in memory
@@ -180,21 +201,23 @@ class ProjectFrame(tk.Frame):
         self.task_frames = []
         for r in self.project.Tasks:
             if r.Status == 0:
-                self.task_frames.append(TaskFrame(self, r))
+                self.task_frames.append(TaskFrame(self.task_holder_frame, r))
         self.task_frames.sort(key=sort_date)
 
 
     def layout_tasks(self):
         self.task_labels = []
-        for i, t in enumerate(self.task_frames, 5):
-            task_label = tk.Label(self,
-                                  text=i-4,
+        for i, t in enumerate(self.task_frames, 0):
+            task_label = tk.Label(self.task_holder_frame,
+                                  text=i+1,
                                   font=front_page.styling.taskfont)
             self.task_labels.append(task_label)
-            task_label.grid(row=i, column=0)
+            task_label.grid(row=i, column=0, sticky='w')
             t.grid(row=i, column=1, columnspan=2, sticky='ew', padx=5, pady=5)
-            self.grid_rowconfigure(i, weight=2)
-
+            self.task_holder_frame.grid_rowconfigure(i, weight=1, uniform='y')
+        self.task_holder_frame.columnconfigure(0, weight=1)
+        self.task_holder_frame.columnconfigure(1, weight=8)
+        self.task_holder_frame.columnconfigure(2, weight=1)
     def complete_project(self):
         res = messagebox.askyesno('Warning', 'Complete Project & Archive?')
         if res == True:
@@ -274,8 +297,7 @@ class TaskFrame(tk.Frame):
     def __init__(self, master, task):
         super().__init__(master)
         self.task = task
-
-        #configuration
+        #  configuration
         self.grid_columnconfigure(0, weight=5)
         self.grid_columnconfigure(1, weight=3)
         self.grid_columnconfigure(2, weight=1)
@@ -323,23 +345,19 @@ class Archive(tk.Toplevel):
 
         self.completed_header_label = tk.Label(self, text='Completed', font=front_page.styling.taskfont)
         self.completed_header_label.grid(row=1, column=2, pady=5, padx=5)
-        print('unsorted')
-        for x in self.project.Tasks:
-            print(x.CompletionDate)
 
         sorted_tasks = [i for i in self.project.Tasks]
         sorted_tasks.sort(key=lambda y: (y.Deadline, y.CompletionDate))
-        print('sorted')
-        for y in sorted_tasks:
-            print(y.CompletionDate)
 
         for i, r in enumerate(sorted_tasks, 2):
             descrip_text = r.Description
             deadline_text = int_to_date_conversion(r.Deadline)
-            completion_text = ""
             if r.Status == 1:
-                descrip_text = self.strike(descrip_text)
+                self.descrip_value = tk.Label(self, text=descrip_text, font=front_page.styling.comptaskfont)
                 completion_text = int_to_date_conversion(r.CompletionDate)
+            else:
+                self.descrip_value = tk.Label(self, text=descrip_text, font=front_page.styling.taskfont)
+                completion_text = ""
 
             self.descrip_value = tk.Label(self, text=descrip_text, font=front_page.styling.taskfont)
             self.descrip_value.grid(row=i, column=0, padx=5, pady=5)
@@ -353,14 +371,71 @@ class Archive(tk.Toplevel):
         self.exit_archive_btn = tk.Button(self, text='Exit', command=self.exit_archive, font=front_page.styling.buttonfont)
         self.exit_archive_btn.grid(row=0, column=1)
 
-
-
     def exit_archive(self):
         self.destroy()
 
 
-    def strike(self, text):
-        return ''.join([u'\u0336{}'.format(c) for c in text])
+# Class for the project history
+class ProjectHistory(tk.Toplevel):
+
+    def __init__(self, master):
+        super().__init__(master)
+        statement = select(Project)
+        self.results = session.execute(statement).scalars().all()
+        print(self.results)
+
+        self.header = tk.Label(self, text='Project History', font=front_page.styling.projectfont)
+        self.header.grid(row=0, column=0, columnspan=4)
+
+        self.title_header = tk.Label(self, text='Title', font=front_page.styling.smallheadfont)
+        self.title_header.grid(row=1, column=0)
+
+        self.status_header = tk.Label(self, text='Status', font=front_page.styling.smallheadfont)
+        self.status_header.grid(row=1, column=1)
+
+        self.deadline_header = tk.Label(self, text='Deadline', font=front_page.styling.smallheadfont)
+        self.deadline_header.grid(row=1, column=2)
+
+        self.completed_header = tk.Label(self, text='Completed', font=front_page.styling.smallheadfont)
+        self.completed_header.grid(row=1, column=3)
+
+        self.set_results()
+
+    def set_results(self):
+
+        self.history_dic = {}
+        for i, proj in enumerate(self.results, 2):
+            new_rec = HistoryRecord(self, proj, i)
+            self.history_dic[i] = new_rec
+
+
+
+class HistoryRecord:
+
+    def __init__(self, master, proj, start_row):
+        self.project = proj
+        self.master= master
+
+        proj_btn = tk.Button(self.master, text=proj.Title, command=self.view_archive,
+                             font=front_page.styling.taskfont)
+        status_text = 'Active'
+        comp_date = ''
+
+        if proj.Status == 1:
+            status_text = 'Complete'
+            comp_date = int_to_date_conversion(proj.CompletionDate)
+
+        status_lbl = tk.Label(self.master, text=status_text, font=front_page.styling.taskfont)
+        deadline_lbl = tk.Label(self.master, text=int_to_date_conversion(proj.Deadline), font=front_page.styling.datefont)
+        complete_lbl = tk.Label(self.master, text=comp_date, font=front_page.styling.datefont)
+
+        proj_btn.grid(row=start_row, column=0)
+        status_lbl.grid(row=start_row, column=1)
+        deadline_lbl.grid(row=start_row, column=2)
+        complete_lbl.grid(row=start_row, column=3)
+
+    def view_archive(self):
+        nA = Archive(self.master, self.project)
 
 
 def main():
